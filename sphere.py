@@ -13,7 +13,7 @@ def draw_sphere():
         pygame.draw.ellipse(screen, color, (0, ed * i, 300, 300 - (2 * ed * i)), 1)
     for i in range(0, n):
         #                                     x    y      w    h
-        pygame.draw.ellipse(screen, color, (ed * i, 0 , 300 - (2 * ed * i), 300), 1)
+        pygame.draw.ellipse(screen, color, (ed * i, 0, 300 - (2 * ed * i), 300), 1)
 
 
 while pygame.event.wait().type != pygame.QUIT:
