@@ -67,5 +67,4 @@ while running:
     clock.tick(fps)
 
 
-
 pygame.quit()
