@@ -167,11 +167,12 @@ class Enemy(pygame.sprite.Sprite):
     def __init__(self, x, y):
         super().__init__(all_sprites, enemy_group)
         self.frames = enemy_image[:]
+        self.healthpoints = 2
         self.cur_frame = 0
         self.counter = 0
         self.speed = 1
         self.image = self.frames[self.cur_frame]
-        self.rect = self.image.get_rect().move(tile_width * x + 10, tile_height * y + 5)
+        self.rect = self.image.get_rect().move(tile_width * x + 15, tile_height * y + 8)
         # print(self.frames[self.cur_frame])
 
     def update(self):
@@ -191,11 +192,10 @@ class Enemy(pygame.sprite.Sprite):
 
     def chase_the_player(self, player):
         if self.check_for_player(player):
-            x1 = player.rect.x + 35
-            y1 = player.rect.y - 35
-
-            x = self.rect.x + 35
-            y = self.rect.y - 35
+            x1 = player.rect.x + (tile_width // 2)
+            y1 = player.rect.y - (tile_height // 2)
+            x = self.rect.x + (tile_width // 2)
+            y = self.rect.y - (tile_height // 2)
             if not abs(x1 - x) <= 65 or not abs(y1 - y) <= 65:
                 if x1 < x:
                     if y1 > y:
@@ -219,6 +219,11 @@ class Enemy(pygame.sprite.Sprite):
                         self.rect = self.rect.move((0, -self.speed))
             else:
                 return True
+
+    def check_healthpoints(self):
+        if self.healthpoints == 0:
+            print(123)
+            self.kill()
 
 
 # camera
@@ -261,12 +266,8 @@ while running:
             key = event.key
             key_down = True
             if event.key == pygame.K_d:
-                if attacked:
-                    attacked = False
-                    for sprite in enemy_group:
-                        sprite.cur_frame = 0
-                else:
-                    attacked = True
+                for sprite in enemy_group:
+                    sprite.healthpoints -= 1
         if event.type == pygame.KEYUP:
             key_down = False
 
@@ -277,6 +278,7 @@ while running:
         camera.apply(sprite)
 
     for enemy in enemy_group:
+        enemy.check_healthpoints()
         if enemy.chase_the_player(player):
             enemy.update()
         else:
