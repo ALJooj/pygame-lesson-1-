@@ -70,7 +70,6 @@ def generate_level(level):
                 new_player = Player(0, x, y)
             elif level[y][x] == '#':
                 Tile(x, y)
-                print(x, y)
                 Enemy(x, y)
     return new_player, x, y
 
@@ -157,6 +156,12 @@ class Player(pygame.sprite.Sprite):
         self.rect = self.rect.move(0, self.speed)
 
 
+class CheckForPlayer(pygame.sprite.Sprite):
+    def __init__(self, x, y, r):
+        super().__init__(all_sprites)
+        self.image = pygame.Surface([1, (y + r) - (y - r)])
+        self.rect = pygame.Rect(x - r, y - r, x + r, y + r)
+
 # Enemy
 class Enemy(pygame.sprite.Sprite):
     def __init__(self, x, y):
@@ -164,6 +169,7 @@ class Enemy(pygame.sprite.Sprite):
         self.frames = enemy_image[:]
         self.cur_frame = 0
         self.counter = 0
+        self.speed = 1
         self.image = self.frames[self.cur_frame]
         self.rect = self.image.get_rect().move(tile_width * x + 10, tile_height * y + 5)
         # print(self.frames[self.cur_frame])
@@ -174,6 +180,45 @@ class Enemy(pygame.sprite.Sprite):
             self.image = self.frames[self.cur_frame + 2]
         self.counter += 1
         # pass
+
+    def check_for_player(self, player):
+        r = 210
+        x = self.rect.x + (tile_width // 2)
+        y = self.rect.y + (tile_height // 2)
+        rect = CheckForPlayer(x, y, r)
+        if pygame.sprite.collide_rect(rect, player):
+            return True
+
+    def chase_the_player(self, player):
+        if self.check_for_player(player):
+            x1 = player.rect.x + 35
+            y1 = player.rect.y - 35
+
+            x = self.rect.x + 35
+            y = self.rect.y - 35
+            if not abs(x1 - x) <= 65 or not abs(y1 - y) <= 65:
+                if x1 < x:
+                    if y1 > y:
+                        self.rect = self.rect.move((-self.speed, self.speed))
+                    if y1 < y:
+                        self.rect = self.rect.move((-self.speed, -self.speed))
+                if x1 > x:
+                    if y1 > y:
+                        self.rect = self.rect.move((self.speed, self.speed))
+                    if y1 < y:
+                        self.rect = self.rect.move((self.speed, -self.speed))
+                if y == y1:
+                    if x1 > x:
+                        self.rect = self.rect.move((self.speed, 0))
+                    if x1 < x:
+                        self.rect = self.rect.move((-self.speed, 0))
+                elif x == x1:
+                    if y1 > y:
+                        self.rect = self.rect.move((0, self.speed))
+                    if y1 < y:
+                        self.rect = self.rect.move((0, -self.speed))
+            else:
+                return True
 
 
 # camera
@@ -231,13 +276,12 @@ while running:
     for sprite in all_sprites:
         camera.apply(sprite)
 
-    if attacked:
-        for sprite in enemy_group:
-            sprite.update()
-    else:
-        for sprite in enemy_group:
-            sprite.cur_frame = 0
-            sprite.update()
+    for enemy in enemy_group:
+        if enemy.chase_the_player(player):
+            enemy.update()
+        else:
+            enemy.cur_frame = 0
+            enemy.update()
 
     if key_down:
         if key == pygame.K_RIGHT:
