@@ -120,6 +120,7 @@ class Player(pygame.sprite.Sprite):
         self.pos_type = pos_type
         self.image = player_image[pos_type]
 
+        self.healthpoints = 6
         self.speed = 3
         self.rect = self.image.get_rect().move(tile_width * x + 10, tile_height * y + 5)
         self.mask = pygame.mask.from_surface(self.image)
@@ -155,6 +156,11 @@ class Player(pygame.sprite.Sprite):
         self.pos_type = 0
         self.rect = self.rect.move(0, self.speed)
 
+    def check_healthpoints(self):
+        if self.healthpoints <= 0:
+            self.kill()
+
+
 
 class CheckForPlayer(pygame.sprite.Sprite):
     def __init__(self, x, y, r):
@@ -176,7 +182,7 @@ class Enemy(pygame.sprite.Sprite):
         # print(self.frames[self.cur_frame])
 
     def update(self):
-        if self.counter % 5 == 0:
+        if self.counter % 10 == 0:
             self.cur_frame = (self.cur_frame + 1) % (len(self.frames) - 2)
             self.image = self.frames[self.cur_frame + 2]
         self.counter += 1
@@ -221,9 +227,13 @@ class Enemy(pygame.sprite.Sprite):
                 return True
 
     def check_healthpoints(self):
-        if self.healthpoints == 0:
-            print(123)
+        if self.healthpoints <= 0:
             self.kill()
+
+    def attack(self, player):
+        if self.counter % 85 == 0:
+
+            player.healthpoints -= 1
 
 
 # camera
@@ -273,6 +283,7 @@ while running:
 
     # изменяем ракурс камеры
     camera.update(player)
+    player.check_healthpoints()
     # обновляем положение всех спрайтов
     for sprite in all_sprites:
         camera.apply(sprite)
@@ -280,6 +291,7 @@ while running:
     for enemy in enemy_group:
         enemy.check_healthpoints()
         if enemy.chase_the_player(player):
+            enemy.attack(player)
             enemy.update()
         else:
             enemy.cur_frame = 0
@@ -296,7 +308,7 @@ while running:
             player.go_down()
 
     screen.blit(fon, (0, 0))
-    # all_sprites.draw(screen)
+
     tiles_group.draw(screen)
     enemy_group.draw(screen)
     hero_group.draw(screen)
