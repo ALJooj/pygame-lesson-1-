@@ -10,7 +10,7 @@ pygame.init()
 size = width, height = (750, 750)
 screen = pygame.display.set_mode(size)
 fps = 50
-tile_width = tile_height = 75
+tile_width = tile_height = 100
 clock = pygame.time.Clock()
 
 
@@ -90,15 +90,24 @@ player_image = [
 ]
 
 enemy_image = [
-    pygame.transform.scale(load_image('enemy_front.png', -1), (tile_width, tile_height)),
-    pygame.transform.scale(load_image('enemy_front.png', -1), (tile_width, tile_height)),
-    pygame.transform.scale(load_image('knight_1.png', -1), (tile_width, tile_height)),
-    pygame.transform.scale(load_image('knight_3.png', -1), (tile_width, tile_height)),
-    pygame.transform.scale(load_image('knight_5.png', -1), (tile_width, tile_height)),
-    pygame.transform.scale(load_image('knight_4.png', -1), (tile_width, tile_height)),
-    pygame.transform.scale(load_image('knight_5.png', -1), (tile_width, tile_height)),
-    pygame.transform.scale(load_image('knight_4.png', -1), (tile_width, tile_height)),
-
+    pygame.transform.scale(load_image('knight_12.png', -1), (tile_width, tile_height)),
+# attack 1 - 7
+    pygame.transform.scale(load_image('knight_12.png', -1), (tile_width, tile_height)),
+    pygame.transform.scale(load_image('enemy/attack_2/e_attack_1.png', -1), (tile_width, tile_height)),
+    pygame.transform.scale(load_image('enemy/attack_2/e_attack_3.png', -1), (tile_width, tile_height)),
+    pygame.transform.scale(load_image('enemy/attack_2/e_attack_4.png', -1), (tile_width, tile_height)),
+    pygame.transform.scale(load_image('enemy/attack_2/e_attack_5.png', -1), (tile_width, tile_height)),
+    pygame.transform.scale(load_image('enemy/attack_2/e_attack_1.png', -1), (tile_width, tile_height)),
+# moving 7 - 11 l
+    pygame.transform.scale(load_image('enemy/moving/e_move_1.png', -1), (tile_width, tile_height)),
+    pygame.transform.scale(load_image('enemy/moving/e_move_2.png', -1), (tile_width, tile_height)),
+    # pygame.transform.scale(load_image('enemy/moving/e_move_1.png', -1), (tile_width, tile_height)),
+    pygame.transform.scale(load_image('enemy/moving/knight_12.png', -1), (tile_width, tile_height)),
+# moving 11 - 15 r
+    pygame.transform.flip(pygame.transform.scale(load_image('enemy/moving/e_move_1.png', -1), (tile_width, tile_height)), True, False),
+    pygame.transform.flip(pygame.transform.scale(load_image('enemy/moving/e_move_2.png', -1), (tile_width, tile_height)), True, False),
+    pygame.transform.flip(pygame.transform.scale(load_image('enemy/moving/knight_12.png', -1), (tile_width, tile_height)), True, False),
+    # pygame.transform.flip(pygame.transform.scale(load_image('enemy/moving/e_move_1.png', -1), (tile_width, tile_height)), True, False),
 ]
 
 
@@ -120,12 +129,13 @@ class Player(pygame.sprite.Sprite):
         self.pos_type = pos_type
         self.image = player_image[pos_type]
 
+        self.counter = 0
         self.healthpoints = 6
         self.speed = 3
         self.rect = self.image.get_rect().move(tile_width * x + 10, tile_height * y + 5)
         self.mask = pygame.mask.from_surface(self.image)
 
-    def update(self, sprite):
+    def collisions(self, sprite):
         if pygame.sprite.collide_mask(self, sprite):
             if self.pos_type == 2:
                 self.rect = self.rect.move((0, 5))
@@ -161,31 +171,43 @@ class Player(pygame.sprite.Sprite):
             self.kill()
 
 
-
 class CheckForPlayer(pygame.sprite.Sprite):
     def __init__(self, x, y, r):
         super().__init__(all_sprites)
         self.image = pygame.Surface([1, (y + r) - (y - r)])
         self.rect = pygame.Rect(x - r, y - r, x + r, y + r)
 
+
 # Enemy
 class Enemy(pygame.sprite.Sprite):
     def __init__(self, x, y):
         super().__init__(all_sprites, enemy_group)
+        #
         self.frames = enemy_image[:]
+        self.attack_frames = enemy_image[1:7]
+        self.moving_frames_l = enemy_image[7:10]
+        self.moving_frames_r = enemy_image[11:14]
+        #
         self.healthpoints = 2
+        #
         self.cur_frame = 0
+        self.attack_cur_frame = 0
+        self.moving_cur_frame_l = 0
+        self.moving_cur_frame_r = 0
+        #
         self.counter = 0
         self.speed = 1
         self.image = self.frames[self.cur_frame]
         self.rect = self.image.get_rect().move(tile_width * x + 15, tile_height * y + 8)
         # print(self.frames[self.cur_frame])
 
-    def update(self):
-        if self.counter % 10 == 0:
-            self.cur_frame = (self.cur_frame + 1) % (len(self.frames) - 2)
-            self.image = self.frames[self.cur_frame + 2]
+    def count(self):
         self.counter += 1
+
+    def update(self):
+        if self.counter % 7 == 0:
+            self.attack_cur_frame = (self.attack_cur_frame + 1) % (len(self.attack_frames))
+            self.image = self.attack_frames[self.attack_cur_frame]
         # pass
 
     def check_for_player(self, player):
@@ -202,23 +224,50 @@ class Enemy(pygame.sprite.Sprite):
             y1 = player.rect.y - (tile_height // 2)
             x = self.rect.x + (tile_width // 2)
             y = self.rect.y - (tile_height // 2)
-            if not abs(x1 - x) <= 65 or not abs(y1 - y) <= 65:
+            if not abs(x1 - x) <= 95 or not abs(y1 - y) <= 95:
+                #
                 if x1 < x:
+                    if self.counter % 16 == 0:
+                        print('left_dia')
+                        self.moving_cur_frame_l = (self.moving_cur_frame_l + 1) % len(self.moving_frames_l)
+                        self.image = self.moving_frames_l[self.moving_cur_frame_l]
                     if y1 > y:
                         self.rect = self.rect.move((-self.speed, self.speed))
                     if y1 < y:
                         self.rect = self.rect.move((-self.speed, -self.speed))
+#
+
                 if x1 > x:
+                    if self.counter % 16 == 0:
+                        print('r_dia')
+                        self.moving_cur_frame_r = (self.moving_cur_frame_r + 1) % len(self.moving_frames_r)
+                        self.image = self.moving_frames_r[self.moving_cur_frame_r]
+
                     if y1 > y:
                         self.rect = self.rect.move((self.speed, self.speed))
                     if y1 < y:
                         self.rect = self.rect.move((self.speed, -self.speed))
+
+                        #
                 if y == y1:
                     if x1 > x:
+                        # if self.counter % 16 == 0:
+                        #     print('l')
+                        #     self.moving_cur_frame_r = (self.moving_cur_frame_r + 1) % len(self.moving_frames_r)
+                        #     self.image = self.moving_frames_r[self.moving_cur_frame_r]
                         self.rect = self.rect.move((self.speed, 0))
+
                     if x1 < x:
+                        if self.counter % 16 == 0:
+                            print('r')
+                            self.moving_cur_frame_l = (self.moving_cur_frame_l + 1) % len(self.moving_frames_l)
+                            self.image = self.moving_frames_l[self.moving_cur_frame_l]
                         self.rect = self.rect.move((-self.speed, 0))
                 elif x == x1:
+                    if self.counter % 16 == 0:
+                        print('r_top_bot')
+                        self.moving_cur_frame_l = (self.moving_cur_frame_l + 1) % len(self.moving_frames_l)
+                        self.image = self.moving_frames_l[self.moving_cur_frame_l]
                     if y1 > y:
                         self.rect = self.rect.move((0, self.speed))
                     if y1 < y:
@@ -232,7 +281,6 @@ class Enemy(pygame.sprite.Sprite):
 
     def attack(self, player):
         if self.counter % 85 == 0:
-
             player.healthpoints -= 1
 
 
@@ -294,8 +342,8 @@ while running:
             enemy.attack(player)
             enemy.update()
         else:
-            enemy.cur_frame = 0
-            enemy.update()
+            enemy.attack_cur_frame = -1
+        enemy.count()
 
     if key_down:
         if key == pygame.K_RIGHT:
@@ -314,7 +362,7 @@ while running:
     hero_group.draw(screen)
 
     for sprite in (*enemy_group,):
-        player.update(sprite)
+        player.collisions(sprite)
 
     pygame.display.flip()
     clock.tick(fps)
