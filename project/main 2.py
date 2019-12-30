@@ -7,7 +7,7 @@ import sys
 pygame.init()
 
 # options
-size = width, height = (750, 750)
+size = width, height = (1000, 1000)
 screen = pygame.display.set_mode(size)
 fps = 50
 tile_width = tile_height = 100
@@ -20,6 +20,9 @@ all_sprites = pygame.sprite.Group()
 hero_group = pygame.sprite.Group()
 tiles_group = pygame.sprite.Group()
 enemy_group = pygame.sprite.Group()
+horizontal_borders = pygame.sprite.Group()
+vertical_borders = pygame.sprite.Group()
+skill_group = pygame.sprite.Group()
 
 
 # funcs
@@ -98,20 +101,51 @@ enemy_image = [
     pygame.transform.scale(load_image('enemy/attack_2/e_attack_4.png', -1), (tile_width, tile_height)),
     pygame.transform.scale(load_image('enemy/attack_2/e_attack_5.png', -1), (tile_width, tile_height)),
     pygame.transform.scale(load_image('enemy/attack_2/e_attack_1.png', -1), (tile_width, tile_height)),
-# moving 7 - 11 l
+# moving 7 - 10 l
     pygame.transform.scale(load_image('enemy/moving/e_move_1.png', -1), (tile_width, tile_height)),
     pygame.transform.scale(load_image('enemy/moving/e_move_2.png', -1), (tile_width, tile_height)),
     # pygame.transform.scale(load_image('enemy/moving/e_move_1.png', -1), (tile_width, tile_height)),
     pygame.transform.scale(load_image('enemy/moving/knight_12.png', -1), (tile_width, tile_height)),
-# moving 11 - 15 r
-    pygame.transform.flip(pygame.transform.scale(load_image('enemy/moving/e_move_1.png', -1), (tile_width, tile_height)), True, False),
-    pygame.transform.flip(pygame.transform.scale(load_image('enemy/moving/e_move_2.png', -1), (tile_width, tile_height)), True, False),
-    pygame.transform.flip(pygame.transform.scale(load_image('enemy/moving/knight_12.png', -1), (tile_width, tile_height)), True, False),
+# moving 10 - 14 r
+    pygame.transform.flip(
+        pygame.transform.scale(load_image('enemy/moving/e_move_1.png', -1), (tile_width, tile_height)), True, False),
+    pygame.transform.flip(
+        pygame.transform.scale(load_image('enemy/moving/e_move_2.png', -1), (tile_width, tile_height)), True, False),
+    pygame.transform.flip(
+        pygame.transform.scale(load_image('enemy/moving/knight_12.png', -1), (tile_width, tile_height)), True, False),
     # pygame.transform.flip(pygame.transform.scale(load_image('enemy/moving/e_move_1.png', -1), (tile_width, tile_height)), True, False),
+# attack 14 - 18
+    pygame.transform.flip(
+        pygame.transform.scale(load_image('knight_12.png', -1), (tile_width, tile_height)), True, False),
+    pygame.transform.flip(
+        pygame.transform.scale(load_image('enemy/attack_2/e_attack_1.png', -1), (tile_width, tile_height)), True, False),
+    pygame.transform.flip(
+        pygame.transform.scale(load_image('enemy/attack_2/e_attack_3.png', -1), (tile_width, tile_height)), True, False),
+    pygame.transform.flip(
+        pygame.transform.scale(load_image('enemy/attack_2/e_attack_4.png', -1), (tile_width, tile_height)), True, False),
+    pygame.transform.flip(
+        pygame.transform.scale(load_image('enemy/attack_2/e_attack_5.png', -1), (tile_width, tile_height)), True, False),
+    pygame.transform.flip(
+        pygame.transform.scale(load_image('enemy/attack_2/e_attack_1.png', -1), (tile_width, tile_height)), True, False),
 ]
-
-
 # classes
+
+
+class Border(pygame.sprite.Sprite):
+    # строго вертикальный или строго горизонтальный отрезок
+    def __init__(self, x1, y1, x2, y2):
+        super().__init__(all_sprites)
+        if x1 == x2:  # вертикальная стенка
+            self.add(vertical_borders)
+            self.image = pygame.transform.scale(load_image('grass.png'), [1, y2 - y1])
+            self.rect = pygame.Rect(x1, y1, 1, y2 - y1)
+        else:  # горизонтальная стенка
+            self.add(horizontal_borders)
+            # self.image = pygame.Surface([x2 - x1, 1])
+            self.image = pygame.transform.scale(load_image('grass.png'), [x2 - x1, 1])
+            self.rect = pygame.Rect(x1, y1, x2 - x1, 1)
+
+
 
 class Tile(pygame.sprite.Sprite):
 
@@ -119,6 +153,35 @@ class Tile(pygame.sprite.Sprite):
         super().__init__(all_sprites, tiles_group)
         self.image = tile_images[random.randint(0, len(tile_images) - 1)]
         self.rect = self.image.get_rect().move(tile_width * x + 10, tile_height * y + 5)
+
+
+# mist coil spell
+class MistCoil(pygame.sprite.Sprite):
+
+    def __init__(self, pos, nav):
+        super().__init__(all_sprites, skill_group)
+        self.image = load_image('star.png', -1)
+        self.rect = self.image.get_rect()
+        self.rect.x = pos[0]
+        self.rect.y = pos[1]
+        self.nav = nav
+
+    def update(self, groups):
+        if pygame.sprite.spritecollideany(self, groups):
+            self.kill()
+        if pygame.sprite.spritecollideany(self, groups):
+            self.kill()
+
+    def moving(self):
+        if self.nav == 2:
+            self.rect = self.rect.move((0, -16))
+        if self.nav == 3:
+            self.rect = self.rect.move((16, 0))
+        if self.nav == 0:
+            self.rect = self.rect.move((0, 16))
+        if self.nav == 1:
+            self.rect = self.rect.move((-16, 0))
+
 
 
 # player
@@ -130,19 +193,19 @@ class Player(pygame.sprite.Sprite):
         self.image = player_image[pos_type]
 
         self.counter = 0
-        self.healthpoints = 6
+        self.healthpoints = 8
         self.speed = 3
         self.rect = self.image.get_rect().move(tile_width * x + 10, tile_height * y + 5)
         self.mask = pygame.mask.from_surface(self.image)
 
     def collisions(self, sprite):
         if pygame.sprite.collide_mask(self, sprite):
-            if self.pos_type == 2:
-                self.rect = self.rect.move((0, 5))
             if self.pos_type == 0:
                 self.rect = self.rect.move((0, -5))
             if self.pos_type == 1:
                 self.rect = self.rect.move((5, 0))
+            if self.pos_type == 2:
+                self.rect = self.rect.move((0, 5))
             if self.pos_type == 3:
                 self.rect = self.rect.move((-5, 0))
 
@@ -170,6 +233,15 @@ class Player(pygame.sprite.Sprite):
         if self.healthpoints <= 0:
             self.kill()
 
+    def cast_mist_coil(self):
+        if self.counter > 30:
+            MistCoil((self.rect.x, self.rect.y), self.pos_type)
+            self.counter = 0
+
+    def count(self):
+        self.counter += 1
+
+
 
 class CheckForPlayer(pygame.sprite.Sprite):
     def __init__(self, x, y, r):
@@ -180,18 +252,21 @@ class CheckForPlayer(pygame.sprite.Sprite):
 
 # Enemy
 class Enemy(pygame.sprite.Sprite):
+
     def __init__(self, x, y):
         super().__init__(all_sprites, enemy_group)
         #
         self.frames = enemy_image[:]
-        self.attack_frames = enemy_image[1:7]
+        self.attack_frames_l = enemy_image[1:7]
+        self.attack_frames_r = enemy_image[14:]
         self.moving_frames_l = enemy_image[7:10]
         self.moving_frames_r = enemy_image[11:14]
         #
         self.healthpoints = 2
         #
         self.cur_frame = 0
-        self.attack_cur_frame = 0
+        self.attack_cur_frame_l = 0
+        self.attack_cur_frame_r = 0
         self.moving_cur_frame_l = 0
         self.moving_cur_frame_r = 0
         #
@@ -206,8 +281,8 @@ class Enemy(pygame.sprite.Sprite):
 
     def update(self):
         if self.counter % 7 == 0:
-            self.attack_cur_frame = (self.attack_cur_frame + 1) % (len(self.attack_frames))
-            self.image = self.attack_frames[self.attack_cur_frame]
+            self.attack_cur_frame_l = (self.attack_cur_frame_l + 1) % (len(self.attack_frames_l))
+            self.image = self.attack_frames_l[self.attack_cur_frame_l]
         # pass
 
     def check_for_player(self, player):
@@ -228,7 +303,6 @@ class Enemy(pygame.sprite.Sprite):
                 #
                 if x1 < x:
                     if self.counter % 16 == 0:
-                        print('left_dia')
                         self.moving_cur_frame_l = (self.moving_cur_frame_l + 1) % len(self.moving_frames_l)
                         self.image = self.moving_frames_l[self.moving_cur_frame_l]
                     if y1 > y:
@@ -239,7 +313,6 @@ class Enemy(pygame.sprite.Sprite):
 
                 if x1 > x:
                     if self.counter % 16 == 0:
-                        print('r_dia')
                         self.moving_cur_frame_r = (self.moving_cur_frame_r + 1) % len(self.moving_frames_r)
                         self.image = self.moving_frames_r[self.moving_cur_frame_r]
 
@@ -259,13 +332,11 @@ class Enemy(pygame.sprite.Sprite):
 
                     if x1 < x:
                         if self.counter % 16 == 0:
-                            print('r')
                             self.moving_cur_frame_l = (self.moving_cur_frame_l + 1) % len(self.moving_frames_l)
                             self.image = self.moving_frames_l[self.moving_cur_frame_l]
                         self.rect = self.rect.move((-self.speed, 0))
                 elif x == x1:
                     if self.counter % 16 == 0:
-                        print('r_top_bot')
                         self.moving_cur_frame_l = (self.moving_cur_frame_l + 1) % len(self.moving_frames_l)
                         self.image = self.moving_frames_l[self.moving_cur_frame_l]
                     if y1 > y:
@@ -306,6 +377,12 @@ class Camera:
 camera = Camera()
 fon = pygame.transform.scale(load_image('lava.png'), (700, 700))
 player, level_x, level_y = generate_level(load_level('level test.txt'))
+level_y += 1
+level_x += 1
+Border(0, 0, level_x * tile_width, 0)
+Border(0, level_y * tile_height, level_x * tile_width, level_y * tile_height)
+Border(0, 0, 0, level_x * tile_width)
+Border(level_x * tile_width, 0, level_x * tile_width, level_y * tile_height)
 
 # allowing flags
 running = True
@@ -326,6 +403,9 @@ while running:
             if event.key == pygame.K_d:
                 for sprite in enemy_group:
                     sprite.healthpoints -= 1
+            if event.key == pygame.K_z:
+                player.cast_mist_coil()
+
         if event.type == pygame.KEYUP:
             key_down = False
 
@@ -345,6 +425,12 @@ while running:
             enemy.attack_cur_frame = -1
         enemy.count()
 
+    for sprite in (vertical_borders, horizontal_borders):
+        skill_group.update(sprite)
+
+    for sprite in skill_group:
+        sprite.moving()
+
     if key_down:
         if key == pygame.K_RIGHT:
             player.go_right()
@@ -358,11 +444,14 @@ while running:
     screen.blit(fon, (0, 0))
 
     tiles_group.draw(screen)
+    skill_group.draw(screen)
     enemy_group.draw(screen)
     hero_group.draw(screen)
 
-    for sprite in (*enemy_group,):
+    for sprite in (*enemy_group, *vertical_borders, *horizontal_borders):
         player.collisions(sprite)
+
+    player.count()
 
     pygame.display.flip()
     clock.tick(fps)
