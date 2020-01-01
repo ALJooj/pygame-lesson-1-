@@ -24,7 +24,7 @@ vertical_borders = pygame.sprite.Group()
 skill_group = pygame.sprite.Group()
 grave_group = pygame.sprite.Group()
 ghost_group = pygame.sprite.Group()
-
+game_group = pygame.sprite.Group()
 
 # funcs
 
@@ -133,15 +133,18 @@ class Border(pygame.sprite.Sprite):
 
 # скрин смерти (проигрыш)
 class YouLost(pygame.sprite.Sprite):
-    def __init__(self, group):
-        super().__init__(group)
-        self.image = pygame.transform.scale(self.image, size)
+    def __init__(self):
+        super().__init__(game_group)
+        self.image = pygame.transform.scale(load_image('gameover_screen.png'), size)
         self.rect = self.image.get_rect()
         self.rect.x = -width
 
     def update(self):
-        if self.rect.x <= 0:
+        if self.rect.x <= -8:
             self.rect = self.rect.move(8, 0)
+        else:
+            pygame.time.wait(4666)
+            terminate()
 
 
 # могила для смерти врага
@@ -310,6 +313,7 @@ class Player(pygame.sprite.Sprite):
     def check_healthpoints(self):       # жив ли
         if self.healthpoints <= 0:
             self.kill()
+            return True
 
     def cast_mist_coil(self):           # выпускание магического заряда
         if self.counter > 47:           # задержка
@@ -463,6 +467,7 @@ class Camera:
 
 # generating level
 camera = Camera()
+gm_lost = YouLost()
 fon = pygame.transform.scale(load_image('lava.png'), (700, 700))
 player, level_x, level_y = generate_level(load_level('level test.txt'))
 Border(0, 0, level_x * tile_width, 0)                                           # границы уровня
@@ -478,6 +483,7 @@ key = ''
 start_time = None
 hasted = False
 attacked = False
+game_over = False
 
 # main loop
 while running:
@@ -565,11 +571,14 @@ while running:
     ghost_group.draw(screen)
     enemy_group.draw(screen)
     hero_group.draw(screen)
+    game_group.draw(screen)
 
     for sprite in (*enemy_group, *vertical_borders, *horizontal_borders):
         player.collisions(sprite)
 
-    player.check_healthpoints()
+    if player.check_healthpoints():
+        gm_lost.update()
+
     player.count()
 
     pygame.display.flip()
