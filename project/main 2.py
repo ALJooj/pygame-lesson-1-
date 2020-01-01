@@ -131,6 +131,19 @@ class Border(pygame.sprite.Sprite):
             self.rect = pygame.Rect(x1, y1, x2 - x1, 1)
 
 
+# скрин смерти (проигрыш)
+class YouLost(pygame.sprite.Sprite):
+    def __init__(self, group):
+        super().__init__(group)
+        self.image = pygame.transform.scale(self.image, size)
+        self.rect = self.image.get_rect()
+        self.rect.x = -width
+
+    def update(self):
+        if self.rect.x <= 0:
+            self.rect = self.rect.move(8, 0)
+
+
 # могила для смерти врага
 class Grave(pygame.sprite.Sprite):
     def __init__(self, x, y):
