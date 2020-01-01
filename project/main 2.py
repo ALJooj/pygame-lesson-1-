@@ -23,6 +23,8 @@ enemy_group = pygame.sprite.Group()
 horizontal_borders = pygame.sprite.Group()
 vertical_borders = pygame.sprite.Group()
 skill_group = pygame.sprite.Group()
+grave_group = pygame.sprite.Group()
+ghost_group = pygame.sprite.Group()
 
 
 # funcs
@@ -131,6 +133,17 @@ enemy_image = [
 # classes
 
 
+class Grave(pygame.sprite.Sprite):
+    def __init__(self, x, y):
+        super().__init__(all_sprites, grave_group)
+        w = (tile_width // 2) + tile_width // 4
+        h = (tile_height // 2) + tile_height // 4
+        self.image = pygame.transform.scale(load_image('grave.png', -1), (w, h))
+        self.rect = self.image.get_rect()
+        self.rect.x = x
+        self.rect.y = y
+
+
 class Border(pygame.sprite.Sprite):
     # строго вертикальный или строго горизонтальный отрезок
     def __init__(self, x1, y1, x2, y2):
@@ -145,6 +158,69 @@ class Border(pygame.sprite.Sprite):
             self.image = pygame.transform.scale(load_image('grass.png'), [x2 - x1, 1])
             self.rect = pygame.Rect(x1, y1, x2 - x1, 1)
 
+
+class Ghost(pygame.sprite.Sprite):
+    def __init__(self, x, y):
+        super().__init__(all_sprites, ghost_group)
+        self.image = pygame.transform.scale((load_image('ghost.png', -1)), (tile_width, tile_width))
+        self.rect = self.image.get_rect().move(x, y)
+        self.healthpoints = 2
+        self.counter = 0
+        self.attack_points = 2
+        self.speed = 3
+
+    def check_for_enemy(self, enemy):
+        r = 210
+        x = self.rect.x + (tile_width // 2)
+        y = self.rect.y + (tile_height // 2)
+        rect = CheckForPlayer(x, y, r)
+        if pygame.sprite.collide_rect(rect, enemy):
+            return True
+
+    def chase_the_enemy(self, enemy):
+        if self.check_for_enemy(enemy):
+            x1 = enemy.rect.x + (tile_width // 2)
+            y1 = enemy.rect.y - (tile_height // 2)
+            x = self.rect.x + (tile_width // 2)
+            y = self.rect.y - (tile_height // 2)
+            if not abs(x1 - x) <= 65 or not abs(y1 - y) <= 65:
+                #
+                if x1 < x:
+                    if y1 > y:
+                        self.rect = self.rect.move((-self.speed, self.speed))
+                    if y1 < y:
+                        self.rect = self.rect.move((-self.speed, -self.speed))
+                #
+                if x1 > x:
+                    if y1 > y:
+                        self.rect = self.rect.move((self.speed, self.speed))
+                    if y1 < y:
+                        self.rect = self.rect.move((self.speed, -self.speed))
+                        #
+                if y == y1:
+                    if x1 > x:
+                        self.rect = self.rect.move((self.speed, 0))
+
+                    if x1 < x:
+                        self.rect = self.rect.move((-self.speed, 0))
+                elif x == x1:
+                    if y1 > y:
+                        self.rect = self.rect.move((0, self.speed))
+                    if y1 < y:
+                        self.rect = self.rect.move((0, -self.speed))
+            else:
+                return True
+
+    def check_healthpoints(self):
+        if self.healthpoints <= 0:
+            self.kill()
+
+    def attack(self, enemy):
+        if self.counter % 130 == 0:
+            enemy.healthpoints -= self.attack_points
+
+    def count(self):
+        self.counter += 1
 
 
 class Tile(pygame.sprite.Sprite):
@@ -167,10 +243,11 @@ class MistCoil(pygame.sprite.Sprite):
         self.nav = nav
 
     def update(self, groups):
-        if pygame.sprite.spritecollideany(self, groups):
-            self.kill()
-        if pygame.sprite.spritecollideany(self, groups):
-            self.kill()
+        for sprite in groups:
+            if pygame.sprite.collide_rect(self, sprite):
+                if type(sprite) == Enemy:
+                    sprite.healthpoints -= 2
+                self.kill()
 
     def moving(self):
         if self.nav == 2:
@@ -183,7 +260,6 @@ class MistCoil(pygame.sprite.Sprite):
             self.rect = self.rect.move((-16, 0))
 
 
-
 # player
 class Player(pygame.sprite.Sprite):
 
@@ -191,7 +267,10 @@ class Player(pygame.sprite.Sprite):
         super().__init__(all_sprites, hero_group)
         self.pos_type = pos_type
         self.image = player_image[pos_type]
+        self.r = 210
 
+        self.max_dummies = 2
+        self.haste_used = False
         self.counter = 0
         self.healthpoints = 8
         self.speed = 3
@@ -238,9 +317,26 @@ class Player(pygame.sprite.Sprite):
             MistCoil((self.rect.x, self.rect.y), self.pos_type)
             self.counter = 0
 
+    def haste(self):
+        if self.counter > 100:
+            self.speed = 6
+            self.haste_used = False
+            self.counter = 0
+        elif self.counter == 45:
+
+            self.speed = 3
+            self.haste_used = True
+
+    def raise_the_dead(self, grave):
+        if self.counter > 210:
+            x = self.rect.x + (tile_width // 2)
+            y = self.rect.y + (tile_height // 2)
+            rect = CheckForPlayer(x, y, self.r)
+            if pygame.sprite.collide_rect(rect, grave):
+                return True
+
     def count(self):
         self.counter += 1
-
 
 
 class CheckForPlayer(pygame.sprite.Sprite):
@@ -262,7 +358,8 @@ class Enemy(pygame.sprite.Sprite):
         self.moving_frames_l = enemy_image[7:10]
         self.moving_frames_r = enemy_image[11:14]
         #
-        self.healthpoints = 2
+        self.healthpoints = 5
+        self.attack_points = 1
         #
         self.cur_frame = 0
         self.attack_cur_frame_l = 0
@@ -286,7 +383,7 @@ class Enemy(pygame.sprite.Sprite):
         # pass
 
     def check_for_player(self, player):
-        r = 210
+        r = 600
         x = self.rect.x + (tile_width // 2)
         y = self.rect.y + (tile_height // 2)
         rect = CheckForPlayer(x, y, r)
@@ -348,11 +445,12 @@ class Enemy(pygame.sprite.Sprite):
 
     def check_healthpoints(self):
         if self.healthpoints <= 0:
+            Grave(self.rect.x, self.rect.y)
             self.kill()
 
     def attack(self, player):
         if self.counter % 85 == 0:
-            player.healthpoints -= 1
+            player.healthpoints -= self.attack_points
 
 
 # camera
@@ -387,8 +485,10 @@ Border(level_x * tile_width, 0, level_x * tile_width, level_y * tile_height)
 # allowing flags
 running = True
 key_down = False
+dead_raised = False
 key = ''
 start_time = None
+hasted = False
 attacked = False
 
 # main loop
@@ -405,6 +505,10 @@ while running:
                     sprite.healthpoints -= 1
             if event.key == pygame.K_z:
                 player.cast_mist_coil()
+            if event.key == pygame.K_x:
+                hasted = True
+            if event.key == pygame.K_c:
+                dead_raised = True
 
         if event.type == pygame.KEYUP:
             key_down = False
@@ -425,11 +529,27 @@ while running:
             enemy.attack_cur_frame = -1
         enemy.count()
 
-    for sprite in (vertical_borders, horizontal_borders):
+    for ghost in ghost_group:
+        ghost.check_healthpoints()
+        for enemy in enemy_group:
+            if ghost.chase_the_enemy(enemy):
+                ghost.attack(enemy)
+                break
+        ghost.count()
+
+    for sprite in (vertical_borders, horizontal_borders, enemy_group):
         skill_group.update(sprite)
 
     for sprite in skill_group:
         sprite.moving()
+
+    if dead_raised:
+        for grave in grave_group:
+            if player.max_dummies >= len(ghost_group) + 1:
+                if player.raise_the_dead(grave):
+                    Ghost(grave.rect.x, grave.rect.y)
+                    grave.kill()
+                    dead_raised = False
 
     if key_down:
         if key == pygame.K_RIGHT:
@@ -444,7 +564,9 @@ while running:
     screen.blit(fon, (0, 0))
 
     tiles_group.draw(screen)
+    grave_group.draw(screen)
     skill_group.draw(screen)
+    ghost_group.draw(screen)
     enemy_group.draw(screen)
     hero_group.draw(screen)
 
