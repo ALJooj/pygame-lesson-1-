@@ -61,7 +61,7 @@ def load_level(filename):
 
 # generate level
 def generate_level(level):
-
+    enemies = 0
     new_player, x, y = None, None, None
     for y in range(len(level)):
         for x in range(len(level)):
@@ -71,9 +71,10 @@ def generate_level(level):
                 Tile(x, y)
                 new_player = Player(0, x, y)
             elif level[y][x] == '#':
+                enemies += 1
                 Tile(x, y)
                 Enemy(x, y)
-    return new_player, x + 1, y + 1
+    return new_player, x + 1, y + 1, enemies
 
 
 # textures
@@ -469,117 +470,124 @@ class Camera:
 camera = Camera()
 gm_lost = YouLost()
 fon = pygame.transform.scale(load_image('lava.png'), (700, 700))
-player, level_x, level_y = generate_level(load_level('level test.txt'))
-Border(0, 0, level_x * tile_width, 0)                                           # границы уровня
-Border(0, level_y * tile_height, level_x * tile_width, level_y * tile_height)   #
-Border(0, 0, 0, level_x * tile_width)                                           #
-Border(level_x * tile_width, 0, level_x * tile_width, level_y * tile_height)    #
+LEVELS = ['level test.txt', 'level test.txt', 'level test.txt']
 
-# allowing flags
-running = True
-key_down = False
-dead_raised = False
-key = ''
-start_time = None
-hasted = False
-attacked = False
-game_over = False
+# генерация уровней в случаи победы
 
-# main loop
-while running:
-    for event in pygame.event.get():
-        if event.type == pygame.QUIT:
-            running = False
-            terminate()
-        if event.type == pygame.KEYDOWN:
-            key = event.key
-            key_down = True
-            if event.key == pygame.K_d:
-                for sprite in enemy_group:
-                    sprite.healthpoints -= 1
-            # скилы (способности)
-            if event.key == pygame.K_z:
-                player.cast_mist_coil()
-            if event.key == pygame.K_x:
-                hasted = True
-            if event.key == pygame.K_c:
-                dead_raised = True
+for level in LEVELS:
 
-        if event.type == pygame.KEYUP:
-            key_down = False
+    player, level_x, level_y, enemies = generate_level(load_level(level))
+    # границы уровня
+    Border(0, 0, level_x * tile_width, 0)                                           #
+    Border(0, level_y * tile_height, level_x * tile_width, level_y * tile_height)   #
+    Border(0, 0, 0, level_x * tile_width)                                           #
+    Border(level_x * tile_width, 0, level_x * tile_width, level_y * tile_height)    #
 
-    # изменяем ракурс камеры
-    camera.update(player)
+    # allowing flags
+    running = True
+    key_down = False
+    dead_raised = False
+    key = ''
+    start_time = None
+    hasted = False
+    attacked = False
+    game_over = False
 
-    # обновляем положение всех спрайтов
-    for sprite in all_sprites:
-        camera.apply(sprite)
+    # main loop
+    while running:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                running = False
+                terminate()
+            if event.type == pygame.KEYDOWN:
+                key = event.key
+                key_down = True
+                if event.key == pygame.K_d:
+                    for sprite in enemy_group:
+                        sprite.healthpoints -= 1
+                # скилы (способности)
+                if event.key == pygame.K_z:
+                    player.cast_mist_coil()
+                if event.key == pygame.K_x:
+                    hasted = True
+                if event.key == pygame.K_c:
+                    dead_raised = True
 
-    # логика врага
-    for enemy in enemy_group:
-        enemy.check_healthpoints()
-        if enemy.chase_the_player(player):
-            enemy.attack(player)
-            enemy.update()
-        else:
-            enemy.attack_cur_frame = -1
-        enemy.count()
+            if event.type == pygame.KEYUP:
+                key_down = False
 
-    # логика призрака
-    for ghost in ghost_group:
-        ghost.check_healthpoints()
+        # изменяем ракурс камеры
+        camera.update(player)
+
+        # обновляем положение всех спрайтов
+        for sprite in all_sprites:
+            camera.apply(sprite)
+
+        # логика врага
         for enemy in enemy_group:
-            if ghost.chase_the_enemy(enemy):
-                ghost.attack(enemy)
-                break
-        ghost.count()
+            enemy.check_healthpoints()
+            if enemy.chase_the_player(player):
+                enemy.attack(player)
+                enemy.update()
+            else:
+                enemy.attack_cur_frame = -1
+            enemy.count()
 
-    # взаимодействия "койла"
-    for sprite in (vertical_borders, horizontal_borders, enemy_group):
-        skill_group.update(sprite)
+        # логика призрака
+        for ghost in ghost_group:
+            ghost.check_healthpoints()
+            for enemy in enemy_group:
+                if ghost.chase_the_enemy(enemy):
+                    ghost.attack(enemy)
+                    break
+            ghost.count()
 
-    # полет "койла"
-    for sprite in skill_group:
-        sprite.moving()
+        # взаимодействия "койла"
+        for sprite in (vertical_borders, horizontal_borders, enemy_group):
+            skill_group.update(sprite)
 
-    # логика "призыва мертвых"
-    if dead_raised:
-        for grave in grave_group:
-            if player.max_dummies >= len(ghost_group) + 1:
-                if player.raise_the_dead(grave):
-                    Ghost(grave.rect.x, grave.rect.y)
-                    grave.kill()
-                    dead_raised = False
+        # полет "койла"
+        for sprite in skill_group:
+            sprite.moving()
 
-    # "плавное" движение
-    if key_down:
-        if key == pygame.K_RIGHT:
-            player.go_right()
-        if key == pygame.K_LEFT:
-            player.go_left()
-        if key == pygame.K_UP:
-            player.go_up()
-        if key == pygame.K_DOWN:
-            player.go_down()
+        # логика "призыва мертвых"
+        if dead_raised:
+            for grave in grave_group:
+                if player.max_dummies >= len(ghost_group) + 1:
+                    if player.raise_the_dead(grave):
+                        Ghost(grave.rect.x, grave.rect.y)
+                        grave.kill()
+                        dead_raised = False
 
-    # прорисовка текстур
-    screen.blit(fon, (0, 0))
+        # "плавное" движение
+        if key_down:
+            if key == pygame.K_RIGHT:
+                player.go_right()
+            if key == pygame.K_LEFT:
+                player.go_left()
+            if key == pygame.K_UP:
+                player.go_up()
+            if key == pygame.K_DOWN:
+                player.go_down()
 
-    tiles_group.draw(screen)
-    grave_group.draw(screen)
-    skill_group.draw(screen)
-    ghost_group.draw(screen)
-    enemy_group.draw(screen)
-    hero_group.draw(screen)
-    game_group.draw(screen)
+        # прорисовка текстур
+        screen.blit(fon, (0, 0))
 
-    for sprite in (*enemy_group, *vertical_borders, *horizontal_borders):
-        player.collisions(sprite)
+        tiles_group.draw(screen)
+        grave_group.draw(screen)
+        skill_group.draw(screen)
+        ghost_group.draw(screen)
+        enemy_group.draw(screen)
+        hero_group.draw(screen)
+        game_group.draw(screen)
 
-    if player.check_healthpoints():
-        gm_lost.update()
+        # логика игрока
+        for sprite in (*enemy_group, *vertical_borders, *horizontal_borders):
+            player.collisions(sprite)
 
-    player.count()
+        if player.check_healthpoints():
+            gm_lost.update()
 
-    pygame.display.flip()
-    clock.tick(fps)
+        player.count()
+        pygame.display.flip()
+        clock.tick(fps)
