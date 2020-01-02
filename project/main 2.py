@@ -7,24 +7,12 @@ import sys
 pygame.init()
 
 # options
-size = width, height = (700, 700)
+size = width, height = (500, 500)
 screen = pygame.display.set_mode(size)
 fps = 50
 tile_width = tile_height = 100
 clock = pygame.time.Clock()
 
-
-# groups
-all_sprites = pygame.sprite.Group()
-hero_group = pygame.sprite.Group()
-tiles_group = pygame.sprite.Group()
-enemy_group = pygame.sprite.Group()
-horizontal_borders = pygame.sprite.Group()
-vertical_borders = pygame.sprite.Group()
-skill_group = pygame.sprite.Group()
-grave_group = pygame.sprite.Group()
-ghost_group = pygame.sprite.Group()
-game_group = pygame.sprite.Group()
 
 # funcs
 
@@ -466,16 +454,27 @@ class Camera:
         self.dy = -(target.rect.y + target.rect.h // 2 - height // 2)
 
 
-# generating level
-camera = Camera()
-gm_lost = YouLost()
-fon = pygame.transform.scale(load_image('lava.png'), (700, 700))
-LEVELS = ['level test.txt', 'level test.txt', 'level test.txt']
+LEVELS = ['0.txt', '1.txt', '2.txt', '3.txt', '4.txt']
 
 # генерация уровней в случаи победы
 
 for level in LEVELS:
+    # groups
+    all_sprites = pygame.sprite.Group()
+    hero_group = pygame.sprite.Group()
+    tiles_group = pygame.sprite.Group()
+    enemy_group = pygame.sprite.Group()
+    horizontal_borders = pygame.sprite.Group()
+    vertical_borders = pygame.sprite.Group()
+    skill_group = pygame.sprite.Group()
+    grave_group = pygame.sprite.Group()
+    ghost_group = pygame.sprite.Group()
+    game_group = pygame.sprite.Group()
 
+    # generating level
+    camera = Camera()
+    gm_lost = YouLost()
+    fon = pygame.transform.scale(load_image('lava.png'), (700, 700))
     player, level_x, level_y, enemies = generate_level(load_level(level))
     # границы уровня
     Border(0, 0, level_x * tile_width, 0)                                           #
@@ -495,6 +494,9 @@ for level in LEVELS:
 
     # main loop
     while running:
+        if len(grave_group) + len(ghost_group) == enemies:
+            print(len(grave_group) + len(ghost_group))
+            break
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 running = False
@@ -529,6 +531,11 @@ for level in LEVELS:
             if enemy.chase_the_player(player):
                 enemy.attack(player)
                 enemy.update()
+            for ghost in ghost_group:
+                if enemy.chase_the_player(ghost):
+                    enemy.attack(ghost)
+                    enemy.update()
+                    break
             else:
                 enemy.attack_cur_frame = -1
             enemy.count()
